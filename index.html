@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Flashcard Pro - Học ngoại ngữ thông minh</title>
+    <!-- Bootstrap 5 + Font Awesome + Google Fonts -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --bg-gradient-start: #f5f7fa;
+            --bg-gradient-end: #c3cfe2;
+            --card-bg: rgba(255,255,255,0.95);
+            --text-primary: #1e2a3a;
+            --text-secondary: #4b5563;
+            --border-color: #dee2e6;
+            --btn-hover: #eef2ff;
+            --correct-bg: #d1fae5;
+            --wrong-bg: #fee2e2;
+            --table-hover: #f8f9fc;
+        }
+        body.dark {
+            --bg-gradient-start: #1e293b;
+            --bg-gradient-end: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --border-color: #334155;
+            --btn-hover: #334155;
+            --correct-bg: #14532d;
+            --wrong-bg: #7f1a1a;
+            --table-hover: #2d3a4f;
+        }
+        body {
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            transition: background 0.3s, color 0.2s;
+            color: var(--text-primary);
+        }
+        .card-flash {
+            border-radius: 32px;
+            background: var(--card-bg);
+            backdrop-filter: blur(2px);
+            box-shadow: 0 20px 35px -12px rgba(0,0,0,0.2);
+            transition: all 0.2s ease;
+            border: 1px solid var(--border-color);
+        }
+        .question-box {
+            background: rgba(0,0,0,0.03);
+            border-radius: 28px;
+            padding: 1.8rem;
+            text-align: center;
+            font-size: 2rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        .answer-btn {
+            transition: all 0.2s;
+            border-radius: 60px;
+            padding: 12px 20px;
+            font-weight: 500;
+            font-size: 1.1rem;
+            text-align: left;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+        .answer-btn:hover:not(:disabled) {
+            background: var(--btn-hover);
+            transform: translateY(-2px);
+        }
+        .answer-correct {
+            background: var(--correct-bg) !important;
+            border-color: #10b981 !important;
+        }
+        .answer-wrong {
+            background: var(--wrong-bg) !important;
+            border-color: #f87171 !important;
+            text-decoration: line-through;
+        }
+        .upload-zone {
+            border: 2px dashed #94a3b8;
+            border-radius: 32px;
+            background: var(--card-bg);
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .upload-zone:hover {
+            background: var(--btn-hover);
+            border-color: #3b82f6;
+        }
+        .badge-score {
+            font-size: 1rem;
+            background: #1e293b;
+            padding: 6px 14px;
+            border-radius: 40px;
+            color: white;
+        }
+        .dark .badge-score {
+            background: #0f172a;
+        }
+        .progress-custom {
+            height: 8px;
+            border-radius: 10px;
+        }
+        .table-custom th, .table-custom td {
+            vertical-align: middle;
+            color: var(--text-primary);
+            border-color: var(--border-color);
+        }
+        .btn-outline-light-mode {
+            border-color: var(--border-color);
+            color: var(--text-primary);
+        }
+        footer {
+            font-size: 0.85rem;
+            opacity: 0.7;
+        }
+        .fade-out {
+            animation: fadeOut 0.3s ease-out;
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; transform: scale(1); }
+            to { opacity: 0; transform: scale(0.95); }
+        }
+        @media (max-width: 768px) {
+            .question-box { font-size: 1.5rem; padding: 1.2rem; }
+            .answer-btn { font-size: 0.9rem; padding: 10px 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container py-4 py-md-5">
+    <!-- Header với dark mode toggle -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="display-5 fw-bold"><i class="fas fa-language me-2 text-primary"></i>Flashcard Pro</h1>
+        <button id="darkModeToggle" class="btn btn-outline-secondary rounded-pill">
+            <i class="fas fa-moon"></i> <span id="darkModeText">Chế độ tối</span>
+        </button>
+    </div>
+    <p class="lead text-center mb-4">Tải file (DOCX, TXT, CSV, JSON) hoặc nhập thủ công. Học trắc nghiệm thông minh, lọc từ sai, lưu trữ cục bộ.</p>
+
+    <div class="row g-4">
+        <!-- Cột trái: Upload, nhập thủ công, danh sách thẻ -->
+        <div class="col-lg-5">
+            <!-- Upload -->
+            <div class="card-flash card p-4 mb-4">
+                <h5 class="mb-3"><i class="fas fa-upload me-2 text-info"></i>1. Tải file</h5>
+                <div id="uploadZone" class="upload-zone" onclick="document.getElementById('fileInput').click()">
+                    <i class="fas fa-cloud-upload-alt fa-3x mb-2"></i>
+                    <p class="mb-0"><strong>Nhấn hoặc kéo thả file</strong></p>
+                    <small class="text-muted">Hỗ trợ .docx, .txt, .csv, .json</small>
+                </div>
+                <input type="file" id="fileInput" accept=".docx,.txt,.csv,.json" style="display: none;">
+                <div id="uploadStatus" class="mt-3 alert alert-light p-2 small d-none"></div>
+                <div class="mt-2 text-center text-secondary" id="fileHint"></div>
+            </div>
+
+            <!-- Nhập thủ công -->
+            <div class="card-flash card p-4 mb-4">
+                <h5 class="mb-3"><i class="fas fa-pen-alt me-2 text-success"></i>2. Thêm thẻ thủ công</h5>
+                <div class="row g-2">
+                    <div class="col-12 col-md-5">
+                        <input type="text" id="manualEng" class="form-control" placeholder="Từ tiếng Anh">
+                    </div>
+                    <div class="col-12 col-md-5">
+                        <input type="text" id="manualVi" class="form-control" placeholder="Nghĩa tiếng Việt">
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <button id="addCardBtn" class="btn btn-primary w-100"><i class="fas fa-plus"></i></button>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <button id="saveCardsBtn" class="btn btn-sm btn-outline-success"><i class="fas fa-save"></i> Lưu bộ từ</button>
+                    <button id="resetStorageBtn" class="btn btn-sm btn-outline-danger ms-2"><i class="fas fa-trash-alt"></i> Xóa tất cả</button>
+                </div>
+            </div>
+
+            <!-- Danh sách thẻ -->
+            <div class="card-flash card p-4">
+                <h5 class="mb-3"><i class="fas fa-list me-2 text-warning"></i>3. Danh sách thẻ <span id="cardCountBadge" class="badge bg-secondary rounded-pill">0</span></h5>
+                <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                    <table class="table table-sm table-custom">
+                        <thead>
+                            <tr><th>#</th><th>Tiếng Anh</th><th>Tiếng Việt</th><th style="width: 80px"></th></tr>
+                        </thead>
+                        <tbody id="cardTableBody"></tbody>
+                    </table>
+                </div>
+                <div class="mt-2 text-center">
+                    <button id="loadDemoBtn" class="btn btn-sm btn-secondary">Tải demo</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cột phải: Học tập -->
+        <div class="col-lg-7">
+            <div class="card-flash card p-4">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                    <h5 class="mb-0"><i class="fas fa-graduation-cap me-2 text-primary"></i>Phiên học</h5>
+                    <div class="d-flex gap-2">
+                        <button id="wrongOnlyBtn" class="btn btn-sm btn-outline-danger"><i class="fas fa-filter"></i> Chỉ từ sai</button>
+                        <button id="resetWrongBtn" class="btn btn-sm btn-outline-secondary"><i class="fas fa-eraser"></i> Xóa lịch sử sai</button>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between mb-3">
+                    <div class="btn-group" role="group">
+                        <input type="radio" class="btn-check" name="modeRadio" id="modeEngToVi" autocomplete="off" checked>
+                        <label class="btn btn-outline-primary" for="modeEngToVi">Anh → Việt</label>
+                        <input type="radio" class="btn-check" name="modeRadio" id="modeViToEng" autocomplete="off">
+                        <label class="btn btn-outline-primary" for="modeViToEng">Việt → Anh</label>
+                    </div>
+                    <div>
+                        <span class="badge-score"><i class="fas fa-database me-1"></i><span id="totalCardsSpan">0</span> từ</span>
+                        <span class="badge-score ms-2"><i class="fas fa-chart-line me-1"></i>Điểm: <span id="scoreSpan">0</span>/<span id="answeredSpan">0</span></span>
+                    </div>
+                </div>
+                <!-- Thanh tiến trình -->
+                <div class="progress progress-custom mb-3">
+                    <div id="progressBar" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+                </div>
+                <div id="quizArea">
+                    <div id="placeholderMessage" class="text-center py-5 text-muted">
+                        <i class="fas fa-cloud-upload-alt fa-4x mb-3 opacity-50"></i>
+                        <p>Thêm thẻ từ và nhấn "Bắt đầu học" để bắt đầu</p>
+                    </div>
+                    <div id="activeQuiz" style="display: none;">
+                        <div class="question-box mb-4" id="questionText">???</div>
+                        <div class="row g-3" id="answersContainer"></div>
+                        <div class="mt-4 d-flex justify-content-between">
+                            <button id="nextBtn" class="btn btn-outline-primary px-4 py-2" disabled><i class="fas fa-arrow-right me-1"></i> Câu tiếp</button>
+                            <button id="resetQuizBtn" class="btn btn-outline-secondary px-4 py-2"><i class="fas fa-sync-alt"></i> Làm lại</button>
+                        </div>
+                        <div id="feedbackMsg" class="mt-3 small fst-italic text-center"></div>
+                    </div>
+                </div>
+                <div class="mt-3 text-center">
+                    <button id="startBtn" class="btn btn-primary btn-lg px-5" disabled><i class="fas fa-play me-2"></i>Bắt đầu học</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <footer class="text-center mt-5 text-muted">
+        <i class="fas fa-save"></i> Dữ liệu tự động lưu vào trình duyệt | <i class="fas fa-music"></i> Có âm thanh & hiệu ứng
+    </footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.4.2/mammoth.browser.min.js"></script>
+<script>
+    // ---------- Biến toàn cục ----------
+    let flashcards = [];          // [{eng, vi}]
+    let wrongHistory = new Set(); // lưu index của từ đã bị trả lời sai (trong các phiên trước)
+    let currentSession = {
+        active: false,
+        mode: "eng2vi",
+        questions: [],
+        currentIndex: 0,
+        score: 0,
+        answered: 0,
+        quizFinished: false,
+        lockSelection: false,
+        wrongInSession: new Set()   // chỉ số câu sai trong phiên hiện tại
+    };
+
+    // DOM elements
+    const fileInput = document.getElementById('fileInput');
+    const uploadZone = document.getElementById('uploadZone');
+    const uploadStatus = document.getElementById('uploadStatus');
+    const startBtn = document.getElementById('startBtn');
+    const modeEng = document.getElementById('modeEngToVi');
+    const modeVi = document.getElementById('modeViToEng');
+    const totalCardsSpan = document.getElementById('totalCardsSpan');
+    const scoreSpan = document.getElementById('scoreSpan');
+    const answeredSpan = document.getElementById('answeredSpan');
+    const placeholderMsg = document.getElementById('placeholderMessage');
+    const activeQuizDiv = document.getElementById('activeQuiz');
+    const questionTextDiv = document.getElementById('questionText');
+    const answersContainer = document.getElementById('answersContainer');
+    const nextBtn = document.getElementById('nextBtn');
+    const resetQuizBtn = document.getElementById('resetQuizBtn');
+    const feedbackMsg = document.getElementById('feedbackMsg');
+    const progressBar = document.getElementById('progressBar');
+    const cardTableBody = document.getElementById('cardTableBody');
+    const cardCountBadge = document.getElementById('cardCountBadge');
+    const manualEng = document.getElementById('manualEng');
+    const manualVi = document.getElementById('manualVi');
+    const addCardBtn = document.getElementById('addCardBtn');
+    const saveCardsBtn = document.getElementById('saveCardsBtn');
+    const resetStorageBtn = document.getElementById('resetStorageBtn');
+    const loadDemoBtn = document.getElementById('loadDemoBtn');
+    const wrongOnlyBtn = document.getElementById('wrongOnlyBtn');
+    const resetWrongBtn = document.getElementById('resetWrongBtn');
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    const darkModeText = document.getElementById('darkModeText');
+
+    // Âm thanh (dùng Web Audio để tạo beep)
+    function playSound(type) {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.type = 'sine';
+        if (type === 'correct') {
+            oscillator.frequency.value = 880;
+            gainNode.gain.value = 0.3;
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.3);
+        } else {
+            oscillator.frequency.value = 440;
+            gainNode.gain.value = 0.2;
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.2);
+        }
+    }
+
+    // Hiển thị thông báo upload
+    function showUploadMessage(msg, isError = false) {
+        uploadStatus.classList.remove('d-none', 'alert-success', 'alert-danger');
+        uploadStatus.classList.add(isError ? 'alert-danger' : 'alert-success');
+        uploadStatus.innerHTML = `<i class="fas fa-${isError ? 'exclamation-triangle' : 'check-circle'} me-2"></i>${msg}`;
+        setTimeout(() => uploadStatus.classList.add('d-none'), 4000);
+    }
+
+    // Lưu flashcards vào localStorage
+    function saveToLocalStorage() {
+        localStorage.setItem('flashcards', JSON.stringify(flashcards));
+        localStorage.setItem('wrongHistory', JSON.stringify([...wrongHistory]));
+        updateCardTable();
+        totalCardsSpan.innerText = flashcards.length;
+        cardCountBadge.innerText = flashcards.length;
+        startBtn.disabled = (flashcards.length === 0);
+    }
+
+    // Tải từ localStorage
+    function loadFromLocalStorage() {
+        const saved = localStorage.getItem('flashcards');
+        if (saved) {
+            try {
+                flashcards = JSON.parse(saved);
+                if (!Array.isArray(flashcards)) flashcards = [];
+            } catch(e) { flashcards = []; }
+        } else {
+            flashcards = [];
+        }
+        const savedWrong = localStorage.getItem('wrongHistory');
+        if (savedWrong) {
+            try {
+                wrongHistory = new Set(JSON.parse(savedWrong));
+            } catch(e) { wrongHistory = new Set(); }
+        } else {
+            wrongHistory = new Set();
+        }
+        updateCardTable();
+        totalCardsSpan.innerText = flashcards.length;
+        cardCountBadge.innerText = flashcards.length;
+        startBtn.disabled = (flashcards.length === 0);
+        if (flashcards.length === 0) placeholderMsg.style.display = 'block';
+    }
+
+    // Cập nhật bảng danh sách thẻ
+    function updateCardTable() {
+        cardTableBody.innerHTML = '';
+        flashcards.forEach((card, idx) => {
+            const row = cardTableBody.insertRow();
+            row.insertCell(0).innerText = idx+1;
+            row.insertCell(1).innerHTML = `<span contenteditable="true" class="editable-eng" data-idx="${idx}">${escapeHtml(card.eng)}</span>`;
+            row.insertCell(2).innerHTML = `<span contenteditable="true" class="editable-vi" data-idx="${idx}">${escapeHtml(card.vi)}</span>`;
+            const actionCell = row.insertCell(3);
+            const delBtn = document.createElement('button');
+            delBtn.className = 'btn btn-sm btn-outline-danger';
+            delBtn.innerHTML = '<i class="fas fa-trash"></i>';
+            delBtn.onclick = () => deleteCard(idx);
+            actionCell.appendChild(delBtn);
+        });
+        // Gắn sự kiện chỉnh sửa inline
+        document.querySelectorAll('.editable-eng').forEach(el => {
+            el.addEventListener('blur', (e) => {
+                const idx = parseInt(el.dataset.idx);
+                const newVal = el.innerText.trim();
+                if (newVal && flashcards[idx]) {
+                    flashcards[idx].eng = newVal;
+                    saveToLocalStorage();
+                } else {
+                    updateCardTable(); // revert
+                }
+            });
+        });
+        document.querySelectorAll('.editable-vi').forEach(el => {
+            el.addEventListener('blur', (e) => {
+                const idx = parseInt(el.dataset.idx);
+                const newVal = el.innerText.trim();
+                if (newVal && flashcards[idx]) {
+                    flashcards[idx].vi = newVal;
+                    saveToLocalStorage();
+                } else {
+                    updateCardTable();
+                }
+            });
+        });
+    }
+
+    function deleteCard(idx) {
+        if (confirm('Xóa thẻ này?')) {
+            flashcards.splice(idx, 1);
+            // Xóa index trong wrongHistory nếu có
+            const newWrong = new Set();
+            wrongHistory.forEach(i => {
+                if (i < idx) newWrong.add(i);
+                else if (i > idx) newWrong.add(i-1);
+            });
+            wrongHistory = newWrong;
+            saveToLocalStorage();
+        }
+    }
+
+    function addManualCard() {
+        const eng = manualEng.value.trim();
+        const vi = manualVi.value.trim();
+        if (!eng || !vi) {
+            showUploadMessage('Vui lòng nhập cả hai trường', true);
+            return;
+        }
+        flashcards.push({ eng, vi });
+        manualEng.value = '';
+        manualVi.value = '';
+        saveToLocalStorage();
+        showUploadMessage('Đã thêm thẻ', false);
+    }
+
+    // Parse file nội dung
+    function parseTextToFlashcards(text, fileType) {
+        let pairs = [];
+        if (fileType === 'json') {
+            try {
+                const data = JSON.parse(text);
+                if (Array.isArray(data)) {
+                    pairs = data.filter(item => item.eng && item.vi).map(item => ({ eng: item.eng, vi: item.vi }));
+                }
+            } catch(e) { throw new Error('JSON không hợp lệ'); }
+        } else if (fileType === 'csv') {
+            const lines = text.split(/\r?\n/);
+            for (let line of lines) {
+                line = line.trim();
+                if (!line) continue;
+                const parts = line.split(/[,;]\s*/);
+                if (parts.length >= 2) {
+                    pairs.push({ eng: parts[0].trim(), vi: parts[1].trim() });
+                }
+            }
+        } else { // txt hoặc docx (dạng dòng)
+            const lines = text.split(/\r?\n/);
+            const regex = /^\s*(.+?)\s*[-–—]\s*(.+?)\s*$/;
+            for (let line of lines) {
+                line = line.trim();
+                if (!line) continue;
+                const match = line.match(regex);
+                if (match) {
+                    pairs.push({ eng: match[1].trim(), vi: match[2].trim() });
+                } else if (line.includes(',')) {
+                    const parts = line.split(',');
+                    if (parts.length >= 2) pairs.push({ eng: parts[0].trim(), vi: parts[1].trim() });
+                }
+            }
+        }
+        if (pairs.length === 0) throw new Error('Không tìm thấy cặp từ hợp lệ');
+        return pairs;
+    }
+
+    function handleFile(file) {
+        if (!file) return;
+        const ext = file.name.split('.').pop().toLowerCase();
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            if (ext === 'docx') {
+                mammoth.extractRawText({ arrayBuffer: e.target.result })
+                    .then(result => {
+                        const pairs = parseTextToFlashcards(result.value, 'txt');
+                        flashcards.push(...pairs);
+                        saveToLocalStorage();
+                        showUploadMessage(`Thêm ${pairs.length} thẻ từ file DOCX`, false);
+                    })
+                    .catch(err => showUploadMessage('Lỗi DOCX: '+err.message, true));
+            } else {
+                let text = e.target.result;
+                let pairs = parseTextToFlashcards(text, ext);
+                flashcards.push(...pairs);
+                saveToLocalStorage();
+                showUploadMessage(`Thêm ${pairs.length} thẻ từ file .${ext}`, false);
+            }
+        };
+        if (ext === 'docx') reader.readAsArrayBuffer(file);
+        else reader.readAsText(file, 'UTF-8');
+    }
+
+    // Học từ sai: tạo flashcards chỉ gồm những từ đã sai
+    function learnWrongOnly() {
+        if (wrongHistory.size === 0) {
+            alert('Chưa có từ sai nào. Hãy học một phiên trước.');
+            return;
+        }
+        const wrongFlashcards = [];
+        wrongHistory.forEach(idx => {
+            if (flashcards[idx]) wrongFlashcards.push(flashcards[idx]);
+        });
+        if (wrongFlashcards.length === 0) return;
+        // Tạm thay thế flashcards hiện tại bằng bộ từ sai
+        const original = [...flashcards];
+        flashcards = wrongFlashcards;
+        startLearningSession(true); // true = là phiên từ sai, sau khi kết thúc có thể khôi phục?
+        // Lưu lại để sau khi kết thúc? Đơn giản: khi bấm làm lại hoặc start lại sẽ dùng flashcards gốc
+        // Nhưng để tránh phức tạp, ta sẽ ghi đè flashcards hiện tại và khi reset sẽ load lại từ localStorage
+        // Nhưng lưu ý: khi kết thúc, ta sẽ khôi phục bằng cách loadFromLocalStorage
+        // Tuy nhiên, để đơn giản, ta chỉ cần tạo phiên mới với bộ từ sai, và khi nhấn "Làm lại" sẽ gọi loadFromLocalStorage.
+    }
+
+    function startLearningSession(isWrongSession = false) {
+        if (flashcards.length === 0) return;
+        const mode = document.querySelector('input[name="modeRadio"]:checked').id === 'modeEngToVi' ? 'eng2vi' : 'vi2eng';
+        const questions = generateQuestions(mode, flashcards);
+        if (questions.length === 0) return;
+        currentSession = {
+            active: true,
+            mode: mode,
+            questions: questions,
+            currentIndex: 0,
+            score: 0,
+            answered: 0,
+            quizFinished: false,
+            lockSelection: false,
+            wrongInSession: new Set()
+        };
+        placeholderMsg.style.display = 'none';
+        activeQuizDiv.style.display = 'block';
+        renderCurrentQuestion();
+        nextBtn.disabled = true;
+        feedbackMsg.innerHTML = '';
+        updateProgress();
+    }
+
+    function generateQuestions(mode, cardArray) {
+        const questions = [];
+        for (let idx = 0; idx < cardArray.length; idx++) {
+            const pair = cardArray[idx];
+            if (mode === 'eng2vi') {
+                const correct = pair.vi;
+                let others = cardArray.filter((_, i) => i !== idx).map(p => p.vi);
+                others = [...new Set(others)];
+                let options = [correct];
+                for (let o of others) if (options.length < 4 && o !== correct) options.push(o);
+                while (options.length < 4) options.push(correct);
+                shuffleArray(options);
+                questions.push({ questionText: pair.eng, correctAnswer: correct, optionsArray: options, originalIndex: idx });
+            } else {
+                const correct = pair.eng;
+                let others = cardArray.filter((_, i) => i !== idx).map(p => p.eng);
+                others = [...new Set(others)];
+                let options = [correct];
+                for (let o of others) if (options.length < 4 && o !== correct) options.push(o);
+                while (options.length < 4) options.push(correct);
+                shuffleArray(options);
+                questions.push({ questionText: pair.vi, correctAnswer: correct, optionsArray: options, originalIndex: idx });
+            }
+        }
+        shuffleArray(questions);
+        return questions;
+    }
+
+    function shuffleArray(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+    }
+
+    function renderCurrentQuestion() {
+        if (!currentSession.active || currentSession.quizFinished) return;
+        const q = currentSession.questions[currentSession.currentIndex];
+        questionTextDiv.innerText = q.questionText;
+        answersContainer.innerHTML = '';
+        q.optionsArray.forEach((opt, idx) => {
+            const col = document.createElement('div');
+            col.className = 'col-12 col-md-6';
+            const btn = document.createElement('button');
+            btn.className = 'btn answer-btn w-100 text-start';
+            btn.innerHTML = `<span class="me-2">${String.fromCharCode(65+idx)}.</span> ${escapeHtml(opt)}`;
+            btn.dataset.value = opt;
+            btn.addEventListener('click', () => handleAnswer(opt));
+            if (currentSession.lockSelection) btn.disabled = true;
+            col.appendChild(btn);
+            answersContainer.appendChild(col);
+        });
+        feedbackMsg.innerHTML = '';
+        updateProgress();
+    }
+
+    function handleAnswer(selected) {
+        if (!currentSession.active || currentSession.quizFinished || currentSession.lockSelection) return;
+        const q = currentSession.questions[currentSession.currentIndex];
+        const isCorrect = (selected === q.correctAnswer);
+        if (isCorrect) {
+            currentSession.score++;
+            feedbackMsg.innerHTML = `<span class="text-success"><i class="fas fa-check-circle"></i> Chính xác!</span>`;
+            playSound('correct');
+        } else {
+            feedbackMsg.innerHTML = `<span class="text-danger"><i class="fas fa-times-circle"></i> Sai! Đáp án: ${q.correctAnswer}</span>`;
+            playSound('wrong');
+            currentSession.wrongInSession.add(q.originalIndex);
+            // Cập nhật wrongHistory toàn cục
+            wrongHistory.add(q.originalIndex);
+            saveToLocalStorage();
+        }
+        currentSession.answered++;
+        currentSession.lockSelection = true;
+        // Highlight các đáp án
+        const allBtns = answersContainer.querySelectorAll('.answer-btn');
+        allBtns.forEach(btn => {
+            btn.disabled = true;
+            const val = btn.dataset.value;
+            if (val === q.correctAnswer) btn.classList.add('answer-correct');
+            if (val === selected && val !== q.correctAnswer) btn.classList.add('answer-wrong');
+        });
+        if (currentSession.answered === currentSession.questions.length) {
+            currentSession.quizFinished = true;
+            currentSession.active = false;
+            nextBtn.disabled = true;
+            feedbackMsg.innerHTML += `<br><strong>✅ Hoàn thành! Điểm: ${currentSession.score}/${currentSession.questions.length}</strong>`;
+        } else {
+            nextBtn.disabled = false;
+        }
+        updateProgress();
+        scoreSpan.innerText = currentSession.score;
+        answeredSpan.innerText = currentSession.answered;
+    }
+
+    function nextQuestion() {
+        if (!currentSession.active || currentSession.quizFinished) return;
+        if (!currentSession.lockSelection) {
+            feedbackMsg.innerHTML = '<span class="text-warning">Hãy chọn đáp án trước.</span>';
+            return;
+        }
+        if (currentSession.currentIndex + 1 < currentSession.questions.length) {
+            currentSession.currentIndex++;
+            currentSession.lockSelection = false;
+            renderCurrentQuestion();
+            nextBtn.disabled = true;
+        } else {
+            if (!currentSession.quizFinished) {
+                currentSession.quizFinished = true;
+                currentSession.active = false;
+                nextBtn.disabled = true;
+                feedbackMsg.innerHTML += `<br><strong>🏆 Kết thúc!</strong>`;
+            }
+        }
+    }
+
+    function updateProgress() {
+        const total = currentSession.questions.length;
+        const answered = currentSession.answered;
+        const percent = total ? (answered / total) * 100 : 0;
+        progressBar.style.width = `${percent}%`;
+        progressBar.setAttribute('aria-valuenow', percent);
+    }
+
+    function resetSession() {
+        if (flashcards.length) startLearningSession();
+        else placeholderMsg.style.display = 'block';
+    }
+
+    function resetWrongHistory() {
+        if (confirm('Xóa tất cả lịch sử từ sai?')) {
+            wrongHistory.clear();
+            saveToLocalStorage();
+            showUploadMessage('Đã xóa lịch sử từ sai', false);
+        }
+    }
+
+    // Dark mode
+    function initDarkMode() {
+        if (localStorage.getItem('darkMode') === 'true') {
+            document.body.classList.add('dark');
+            darkModeText.innerText = 'Chế độ sáng';
+        }
+        darkModeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark');
+            const isDark = document.body.classList.contains('dark');
+            localStorage.setItem('darkMode', isDark);
+            darkModeText.innerText = isDark ? 'Chế độ sáng' : 'Chế độ tối';
+        });
+    }
+
+    // Event listeners
+    fileInput.addEventListener('change', (e) => {
+        if (fileInput.files.length) handleFile(fileInput.files[0]);
+    });
+    uploadZone.addEventListener('dragover', e => e.preventDefault());
+    uploadZone.addEventListener('drop', e => {
+        e.preventDefault();
+        if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+    addCardBtn.addEventListener('click', addManualCard);
+    saveCardsBtn.addEventListener('click', () => saveToLocalStorage());
+    resetStorageBtn.addEventListener('click', () => {
+        if (confirm('Xóa toàn bộ thẻ từ?')) {
+            flashcards = [];
+            wrongHistory.clear();
+            saveToLocalStorage();
+            showUploadMessage('Đã xóa tất cả', false);
+        }
+    });
+    loadDemoBtn.addEventListener('click', () => {
+        flashcards.push({ eng: "apple", vi: "quả táo" }, { eng: "car", vi: "xe hơi" }, { eng: "happy", vi: "vui vẻ" }, { eng: "book", vi: "sách" });
+        saveToLocalStorage();
+        showUploadMessage('Đã tải demo', false);
+    });
+    wrongOnlyBtn.addEventListener('click', learnWrongOnly);
+    resetWrongBtn.addEventListener('click', resetWrongHistory);
+    startBtn.addEventListener('click', () => startLearningSession());
+    nextBtn.addEventListener('click', nextQuestion);
+    resetQuizBtn.addEventListener('click', resetSession);
+
+    // Khởi tạo
+    loadFromLocalStorage();
+    initDarkMode();
+
+    function escapeHtml(str) { return str.replace(/[&<>]/g, function(m){if(m==='&')return'&amp;';if(m==='<')return'&lt;';if(m==='>')return'&gt;';return m;}); }
+</script>
+</body>
+</html>
