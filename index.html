@@ -188,8 +188,7 @@
                 <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
                     <table class="table table-sm table-custom">
                         <thead>
-                            <tr><th>#</th><th>Tiếng Anh</th><th>Tiếng Việt</th><th style="width: 80px"></th></tr>
-                        </thead>
+                            <tr><th>#</th><th>Tiếng Anh</th><th>Tiếng Việt</th><th style="width: 80px"></th> </thead>
                         <tbody id="cardTableBody"></tbody>
                     </table>
                 </div>
@@ -210,16 +209,16 @@
                     </div>
                 </div>
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-    <div class="btn-group" role="group">
-        <input type="radio" class="btn-check" name="modeRadio" id="modeEngToVi" autocomplete="off" checked>
-        <label class="btn btn-outline-primary" for="modeEngToVi">Anh → Việt</label>
-        <input type="radio" class="btn-check" name="modeRadio" id="modeViToEng" autocomplete="off">
-        <label class="btn btn-outline-primary" for="modeViToEng">Việt → Anh</label>
-    </div>
-    <div class="d-flex gap-2">
-        <span class="badge-score"><i class="fas fa-database me-1"></i><span id="totalCardsSpan">0</span> từ</span>
-        <span class="badge-score"><i class="fas fa-chart-line me-1"></i>Điểm: <span id="scoreSpan">0</span>/<span id="answeredSpan">0</span></span>
-    </div>
+                    <div class="btn-group" role="group">
+                        <input type="radio" class="btn-check" name="modeRadio" id="modeEngToVi" autocomplete="off" checked>
+                        <label class="btn btn-outline-primary" for="modeEngToVi">Anh → Việt</label>
+                        <input type="radio" class="btn-check" name="modeRadio" id="modeViToEng" autocomplete="off">
+                        <label class="btn btn-outline-primary" for="modeViToEng">Việt → Anh</label>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <span class="badge-score"><i class="fas fa-database me-1"></i><span id="totalCardsSpan">0</span> từ</span>
+                        <span class="badge-score"><i class="fas fa-chart-line me-1"></i>Điểm: <span id="scoreSpan">0</span>/<span id="answeredSpan">0</span></span>
+                    </div>
                 </div>
                 <!-- Thanh tiến trình -->
                 <div class="progress progress-custom mb-3">
@@ -516,8 +515,84 @@
         startLearningSession(true); // true = là phiên từ sai, sau khi kết thúc có thể khôi phục?
         // Lưu lại để sau khi kết thúc? Đơn giản: khi bấm làm lại hoặc start lại sẽ dùng flashcards gốc
         // Nhưng để tránh phức tạp, ta sẽ ghi đè flashcards hiện tại và khi reset sẽ load lại từ localStorage
-        // Nhưng lưu ý: khi kết thúc, ta sẽ khôi phục bằng cách loadFromLocalStorage
         // Tuy nhiên, để đơn giản, ta chỉ cần tạo phiên mới với bộ từ sai, và khi nhấn "Làm lại" sẽ gọi loadFromLocalStorage.
+    }
+
+    // Hàm trộn mảng
+    function shuffleArray(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    }
+
+    // Hàm sinh câu hỏi cải tiến (đảm bảo 4 đáp án phân biệt)
+    function generateQuestions(mode, cardArray) {
+        const questions = [];
+        // Tạo mảng chứa tất cả các từ tiếng Anh và tiếng Việt để dùng làm nhiễu dự phòng
+        const allEng = cardArray.map(p => p.eng);
+        const allVi = cardArray.map(p => p.vi);
+        // Danh sách dự phòng nếu không đủ nhiễu
+        const fallbackEng = ["apple", "book", "car", "dog", "house", "happy", "big", "small"];
+        const fallbackVi = ["quả táo", "sách", "xe hơi", "chó", "nhà", "vui vẻ", "to lớn", "nhỏ bé"];
+        
+        for (let idx = 0; idx < cardArray.length; idx++) {
+            const pair = cardArray[idx];
+            let correct, allDistractors;
+            if (mode === 'eng2vi') {
+                correct = pair.vi;
+                // Lấy tất cả nghĩa tiếng Việt khác (khác với pair.vi)
+                let otherVi = allVi.filter((v, i) => i !== idx && v !== correct);
+                // Loại bỏ trùng
+                otherVi = [...new Set(otherVi)];
+                allDistractors = otherVi;
+                // Nếu thiếu, bổ sung từ fallbackVi nhưng không trùng với correct
+                if (allDistractors.length < 3) {
+                    for (let fb of fallbackVi) {
+                        if (!allDistractors.includes(fb) && fb !== correct) {
+                            allDistractors.push(fb);
+                            if (allDistractors.length >= 3) break;
+                        }
+                    }
+                }
+                // Chọn ngẫu nhiên 3 nhiễu
+                const distractors = shuffleArray([...allDistractors]).slice(0, 3);
+                let options = [correct, ...distractors];
+                // Trộn options
+                options = shuffleArray(options);
+                questions.push({
+                    questionText: pair.eng,
+                    correctAnswer: correct,
+                    optionsArray: options,
+                    originalIndex: idx
+                });
+            } else {
+                correct = pair.eng;
+                let otherEng = allEng.filter((e, i) => i !== idx && e !== correct);
+                otherEng = [...new Set(otherEng)];
+                allDistractors = otherEng;
+                if (allDistractors.length < 3) {
+                    for (let fb of fallbackEng) {
+                        if (!allDistractors.includes(fb) && fb !== correct) {
+                            allDistractors.push(fb);
+                            if (allDistractors.length >= 3) break;
+                        }
+                    }
+                }
+                const distractors = shuffleArray([...allDistractors]).slice(0, 3);
+                let options = [correct, ...distractors];
+                options = shuffleArray(options);
+                questions.push({
+                    questionText: pair.vi,
+                    correctAnswer: correct,
+                    optionsArray: options,
+                    originalIndex: idx
+                });
+            }
+        }
+        shuffleArray(questions);
+        return questions;
     }
 
     function startLearningSession(isWrongSession = false) {
@@ -542,87 +617,6 @@
         nextBtn.disabled = true;
         feedbackMsg.innerHTML = '';
         updateProgress();
-    }
-
-    function generateQuestions(mode, cardArray) {
-    // Hàm sinh câu hỏi cải tiến (thay thế hoàn toàn)
-function generateQuestions(mode, cardArray) {
-    const questions = [];
-    const allEng = cardArray.map(p => p.eng);
-    const allVi = cardArray.map(p => p.vi);
-    // Danh sách dự phòng nếu không đủ từ
-    const fallbackEng = ["apple", "book", "car", "dog", "house", "happy", "big", "small"];
-    const fallbackVi = ["quả táo", "sách", "xe hơi", "chó", "nhà", "vui vẻ", "to lớn", "nhỏ bé"];
-    
-    for (let idx = 0; idx < cardArray.length; idx++) {
-        const pair = cardArray[idx];
-        let correct, allDistractors;
-        if (mode === 'eng2vi') {
-            correct = pair.vi;
-            // Lấy tất cả nghĩa Việt khác (không trùng với đáp án đúng)
-            let otherVi = allVi.filter((v, i) => i !== idx && v !== correct);
-            otherVi = [...new Set(otherVi)];
-            allDistractors = otherVi;
-            // Nếu chưa đủ 3 nhiễu, bổ sung từ fallback
-            if (allDistractors.length < 3) {
-                for (let fb of fallbackVi) {
-                    if (!allDistractors.includes(fb) && fb !== correct) {
-                        allDistractors.push(fb);
-                        if (allDistractors.length >= 3) break;
-                    }
-                }
-            }
-            const distractors = shuffleArray([...allDistractors]).slice(0, 3);
-            let options = [correct, ...distractors];
-            options = shuffleArray(options);
-            questions.push({
-                questionText: pair.eng,
-                correctAnswer: correct,
-                optionsArray: options,
-                originalIndex: idx
-            });
-        } else {
-            correct = pair.eng;
-            let otherEng = allEng.filter((e, i) => i !== idx && e !== correct);
-            otherEng = [...new Set(otherEng)];
-            allDistractors = otherEng;
-            if (allDistractors.length < 3) {
-                for (let fb of fallbackEng) {
-                    if (!allDistractors.includes(fb) && fb !== correct) {
-                        allDistractors.push(fb);
-                        if (allDistractors.length >= 3) break;
-                    }
-                }
-            }
-            const distractors = shuffleArray([...allDistractors]).slice(0, 3);
-            let options = [correct, ...distractors];
-            options = shuffleArray(options);
-            questions.push({
-                questionText: pair.vi,
-                correctAnswer: correct,
-                optionsArray: options,
-                originalIndex: idx
-            });
-        }
-    }
-    shuffleArray(questions);
-    return questions;
-}
-
-// Hàm trộn mảng (nếu chưa có, thêm vào trước generateQuestions)
-function shuffleArray(arr) {
-    for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr;
-    }
-
-    function shuffleArray(arr) {
-        for (let i = arr.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [arr[i], arr[j]] = [arr[j], arr[i]];
-        }
     }
 
     function renderCurrentQuestion() {
