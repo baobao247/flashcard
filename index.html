@@ -545,31 +545,77 @@
     }
 
     function generateQuestions(mode, cardArray) {
-        const questions = [];
-        for (let idx = 0; idx < cardArray.length; idx++) {
-            const pair = cardArray[idx];
-            if (mode === 'eng2vi') {
-                const correct = pair.vi;
-                let others = cardArray.filter((_, i) => i !== idx).map(p => p.vi);
-                others = [...new Set(others)];
-                let options = [correct];
-                for (let o of others) if (options.length < 4 && o !== correct) options.push(o);
-                while (options.length < 4) options.push(correct);
-                shuffleArray(options);
-                questions.push({ questionText: pair.eng, correctAnswer: correct, optionsArray: options, originalIndex: idx });
-            } else {
-                const correct = pair.eng;
-                let others = cardArray.filter((_, i) => i !== idx).map(p => p.eng);
-                others = [...new Set(others)];
-                let options = [correct];
-                for (let o of others) if (options.length < 4 && o !== correct) options.push(o);
-                while (options.length < 4) options.push(correct);
-                shuffleArray(options);
-                questions.push({ questionText: pair.vi, correctAnswer: correct, optionsArray: options, originalIndex: idx });
+    // Hàm sinh câu hỏi cải tiến (thay thế hoàn toàn)
+function generateQuestions(mode, cardArray) {
+    const questions = [];
+    const allEng = cardArray.map(p => p.eng);
+    const allVi = cardArray.map(p => p.vi);
+    // Danh sách dự phòng nếu không đủ từ
+    const fallbackEng = ["apple", "book", "car", "dog", "house", "happy", "big", "small"];
+    const fallbackVi = ["quả táo", "sách", "xe hơi", "chó", "nhà", "vui vẻ", "to lớn", "nhỏ bé"];
+    
+    for (let idx = 0; idx < cardArray.length; idx++) {
+        const pair = cardArray[idx];
+        let correct, allDistractors;
+        if (mode === 'eng2vi') {
+            correct = pair.vi;
+            // Lấy tất cả nghĩa Việt khác (không trùng với đáp án đúng)
+            let otherVi = allVi.filter((v, i) => i !== idx && v !== correct);
+            otherVi = [...new Set(otherVi)];
+            allDistractors = otherVi;
+            // Nếu chưa đủ 3 nhiễu, bổ sung từ fallback
+            if (allDistractors.length < 3) {
+                for (let fb of fallbackVi) {
+                    if (!allDistractors.includes(fb) && fb !== correct) {
+                        allDistractors.push(fb);
+                        if (allDistractors.length >= 3) break;
+                    }
+                }
             }
+            const distractors = shuffleArray([...allDistractors]).slice(0, 3);
+            let options = [correct, ...distractors];
+            options = shuffleArray(options);
+            questions.push({
+                questionText: pair.eng,
+                correctAnswer: correct,
+                optionsArray: options,
+                originalIndex: idx
+            });
+        } else {
+            correct = pair.eng;
+            let otherEng = allEng.filter((e, i) => i !== idx && e !== correct);
+            otherEng = [...new Set(otherEng)];
+            allDistractors = otherEng;
+            if (allDistractors.length < 3) {
+                for (let fb of fallbackEng) {
+                    if (!allDistractors.includes(fb) && fb !== correct) {
+                        allDistractors.push(fb);
+                        if (allDistractors.length >= 3) break;
+                    }
+                }
+            }
+            const distractors = shuffleArray([...allDistractors]).slice(0, 3);
+            let options = [correct, ...distractors];
+            options = shuffleArray(options);
+            questions.push({
+                questionText: pair.vi,
+                correctAnswer: correct,
+                optionsArray: options,
+                originalIndex: idx
+            });
         }
-        shuffleArray(questions);
-        return questions;
+    }
+    shuffleArray(questions);
+    return questions;
+}
+
+// Hàm trộn mảng (nếu chưa có, thêm vào trước generateQuestions)
+function shuffleArray(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
     }
 
     function shuffleArray(arr) {
