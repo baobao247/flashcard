@@ -1,4 +1,3 @@
-(function(){
 'use strict';
 
 /* ========== UTILS ========== */
@@ -498,10 +497,19 @@ function shootConfetti(){
 /* ========== INIT ========== */
 function init(){
   applyTheme();
+  if (typeof initDeckManagerEvents === 'function') {
+    initDeckManagerEvents();
+  }
+  if (typeof initStudySessionEvents === 'function') {
+    initStudySessionEvents();
+  }
   renderDeckSelect();
   renderCardList();
-  renderStudyPanel();
+  if (typeof renderStudyPanel === 'function') {
+    renderStudyPanel();
+  }
 }
-init();
-
-})();
+document.addEventListener('DOMContentLoaded', init);
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+  init();
+}

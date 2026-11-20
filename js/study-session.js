@@ -656,20 +656,39 @@ function renderCardList(){
   }).join('');
 }
 
-$('cardList').addEventListener('click', e => {
-  const starBtn = e.target.closest('[data-star]');
-  if (starBtn){
-    e.stopPropagation();
-    const id = starBtn.dataset.star;
-    const c = getActiveDeck().cards.find(c => c.id === id);
-    if (c){ c.starred = !c.starred; saveState(); renderCardList(); renderStudyPanel(); }
-    return;
+function initStudySessionEvents() {
+  const cl = $('cardList');
+  if (cl && !cl._bound) {
+    cl._bound = true;
+    cl.addEventListener('click', e => {
+      const starBtn = e.target.closest('[data-star]');
+      if (starBtn){
+        e.stopPropagation();
+        const id = starBtn.dataset.star;
+        const c = getActiveDeck().cards.find(c => c.id === id);
+        if (c){ c.starred = !c.starred; saveState(); renderCardList(); renderStudyPanel(); }
+        return;
+      }
+      const editEl = e.target.closest('[data-edit]');
+      if (editEl){
+        openEditCard(editEl.dataset.edit);
+      }
+    });
   }
-  const editEl = e.target.closest('[data-edit]');
-  if (editEl){
-    openEditCard(editEl.dataset.edit);
+
+  const se = $('btnSaveEdit');
+  if (se && !se._bound) {
+    se._bound = true;
+    se.addEventListener('click', () => {
+      const f = $('editFront').value.trim();
+      const b = $('editBack').value.trim();
+      if (!f || !b){ toast('Cần nhập cả 2 mặt', 'error'); return; }
+      updateCard(editingCardId, { front: f, back: b });
+      $('editCardModal').classList.remove('open');
+      toast('Đã cập nhật thẻ', 'success');
+    });
   }
-});
+}
 
 /* ========== EDIT CARD ========== */
 let editingCardId = null;
@@ -682,13 +701,5 @@ function openEditCard(id){
   $('editCardModal').classList.add('open');
   setTimeout(() => $('editFront').focus(), 100);
 }
-$('btnSaveEdit').addEventListener('click', () => {
-  const f = $('editFront').value.trim();
-  const b = $('editBack').value.trim();
-  if (!f || !b){ toast('Cần nhập cả 2 mặt', 'error'); return; }
-  updateCard(editingCardId, { front: f, back: b });
-  $('editCardModal').classList.remove('open');
-  toast('Đã cập nhật thẻ', 'success');
-});
 
 

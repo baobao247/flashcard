@@ -1,3 +1,12 @@
+/* ========== UNIVERSAL UTILS & SRS ENGINE ========== */
+if (typeof window !== 'undefined') {
+  window.$ = window.$ || (id => document.getElementById(id));
+  window.$$ = window.$$ || (sel => document.querySelectorAll(sel));
+  window.uid = window.uid || (() => Date.now().toString(36) + Math.random().toString(36).slice(2, 7));
+  window.now = window.now || (() => Date.now());
+  window.DAY = window.DAY || 86400000;
+}
+
 /* ========== CARD STATUS HELPERS ========== */
 function getCardStatus(card){
   if (!card.reps || card.reps === 0) return 'new';

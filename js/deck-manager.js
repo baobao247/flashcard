@@ -123,91 +123,109 @@ function renderDecksModal(){
     </div>
   `).join('');
 }
-$('decksList').addEventListener('click', e => {
-  const cloneBtn = e.target.closest('[data-clonedeck]');
-  if (cloneBtn){
-    e.stopPropagation();
-    const id = cloneBtn.dataset.clonedeck;
-    const target = state.decks.find(d => d.id === id);
-    if (!target) return;
-    const newDeck = {
-      id: 'deck_' + Date.now(),
-      name: target.name + ' (Bản sao)',
-      emoji: target.emoji || '📚',
-      cards: target.cards.map(c => ({ ...c, id: uid() })),
-      createdAt: now()
-    };
-    state.decks.push(newDeck);
-    state.activeDeckId = newDeck.id;
-    saveState();
-    renderDecksModal();
-    renderDeckSelect();
-    renderCardList();
-    renderStudyPanel();
-    toast('Đã nhân bản bộ thẻ: ' + newDeck.name, 'success');
-    return;
+
+function initDeckManagerEvents() {
+  const dl = $('decksList');
+  if (dl && !dl._bound) {
+    dl._bound = true;
+    dl.addEventListener('click', e => {
+      const cloneBtn = e.target.closest('[data-clonedeck]');
+      if (cloneBtn){
+        e.stopPropagation();
+        const id = cloneBtn.dataset.clonedeck;
+        const target = state.decks.find(d => d.id === id);
+        if (!target) return;
+        const newDeck = {
+          id: 'deck_' + Date.now(),
+          name: target.name + ' (Bản sao)',
+          emoji: target.emoji || '📚',
+          cards: target.cards.map(c => ({ ...c, id: uid() })),
+          createdAt: now()
+        };
+        state.decks.push(newDeck);
+        state.activeDeckId = newDeck.id;
+        saveState();
+        renderDecksModal();
+        renderDeckSelect();
+        renderCardList();
+        renderStudyPanel();
+        toast('Đã nhân bản bộ thẻ: ' + newDeck.name, 'success');
+        return;
+      }
+
+      const delBtn = e.target.closest('[data-deldeck]');
+      if (delBtn){
+        e.stopPropagation();
+        const id = delBtn.dataset.deldeck;
+        if (!confirm('Xóa bộ thẻ và toàn bộ thẻ bên trong?')) return;
+        state.decks = state.decks.filter(d => d.id !== id);
+        if (state.activeDeckId === id) state.activeDeckId = state.decks[0].id;
+        saveState();
+        renderDecksModal();
+        renderDeckSelect();
+        renderCardList();
+        renderStudyPanel();
+        toast('Đã xóa bộ thẻ', 'info');
+        return;
+      }
+      const deckEl = e.target.closest('[data-deck]');
+      if (deckEl){
+        state.activeDeckId = deckEl.dataset.deck;
+        saveState();
+        renderDeckSelect();
+        renderDecksModal();
+        renderCardList();
+        renderStudyPanel();
+        $('decksModal').classList.remove('open');
+      }
+    });
   }
 
-  const delBtn = e.target.closest('[data-deldeck]');
-  if (delBtn){
-    e.stopPropagation();
-    const id = delBtn.dataset.deldeck;
-    if (!confirm('Xóa bộ thẻ và toàn bộ thẻ bên trong?')) return;
-    state.decks = state.decks.filter(d => d.id !== id);
-    if (state.activeDeckId === id) state.activeDeckId = state.decks[0].id;
-    saveState();
-    renderDecksModal();
-    renderDeckSelect();
-    renderCardList();
-    renderStudyPanel();
-    toast('Đã xóa bộ thẻ', 'info');
-    return;
+  const btnCreate = $('btnCreateDeck');
+  if (btnCreate && !btnCreate._bound) {
+    btnCreate._bound = true;
+    btnCreate.addEventListener('click', () => {
+      const name = $('newDeckName').value.trim();
+      if (!name){ toast('Nhập tên bộ thẻ', 'error'); return; }
+      const emojis = ['📚','📖','✏️','🎯','⭐','🌟','🔥','💡','🧠','🎨'];
+      const deck = {
+        id: uid(),
+        name,
+        emoji: emojis[Math.floor(Math.random() * emojis.length)],
+        cards: [],
+        createdAt: now()
+      };
+      state.decks.push(deck);
+      state.activeDeckId = deck.id;
+      $('newDeckName').value = '';
+      saveState();
+      renderDeckSelect();
+      renderDecksModal();
+      renderCardList();
+      renderStudyPanel();
+      toast(`Đã tạo bộ "${name}"`, 'success');
+    });
   }
-  const deckEl = e.target.closest('[data-deck]');
-  if (deckEl){
-    state.activeDeckId = deckEl.dataset.deck;
-    saveState();
-    renderDeckSelect();
-    renderDecksModal();
-    renderCardList();
-    renderStudyPanel();
-    $('decksModal').classList.remove('open');
+
+  const ds = $('deckSelect');
+  if (ds && !ds._bound) {
+    ds._bound = true;
+    ds.addEventListener('change', e => {
+      state.activeDeckId = e.target.value;
+      saveState();
+      renderCardList();
+      renderStudyPanel();
+    });
   }
-});
-$('btnCreateDeck').addEventListener('click', () => {
-  const name = $('newDeckName').value.trim();
-  if (!name){ toast('Nhập tên bộ thẻ', 'error'); return; }
-  const emojis = ['📚','📖','✏️','🎯','⭐','🌟','🔥','💡','🧠','🎨'];
-  const deck = {
-    id: uid(),
-    name,
-    emoji: emojis[Math.floor(Math.random() * emojis.length)],
-    cards: [],
-    createdAt: now()
-  };
-  state.decks.push(deck);
-  state.activeDeckId = deck.id;
-  $('newDeckName').value = '';
-  saveState();
-  renderDeckSelect();
-  renderDecksModal();
-  renderCardList();
-  renderStudyPanel();
-  toast(`Đã tạo bộ "${name}"`, 'success');
-});
+}
 
 function renderDeckSelect(){
   const sel = $('deckSelect');
+  if (!sel) return;
   sel.innerHTML = state.decks.map(d =>
     `<option value="${d.id}" ${d.id === state.activeDeckId ? 'selected' : ''}>
       ${d.emoji || '📚'} ${escapeHtml(d.name)} (${d.cards.length})
     </option>`
   ).join('');
 }
-$('deckSelect').addEventListener('change', e => {
-  state.activeDeckId = e.target.value;
-  saveState();
-  renderCardList();
-  renderStudyPanel();
-});
 
